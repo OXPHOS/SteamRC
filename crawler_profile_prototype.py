@@ -124,23 +124,26 @@ if __name__ == "__main__":
     os.remove(friendsDetail)
     
     while counter < 10: #for test purpose
-        # loop through users
-        userID = idList.pop()
-        steam = SteamUserInfoCrawler(userID)
-        
-        # update information of each user
-        userIDStr = '"' + str(userID) + '"'
-        steam.saveToJson(userDetail, steam.userProfile)
-        steam.saveToJson(ratingDetail, {userIDStr:steam.ratingList})
-        steam.saveToJson(friendsDetail, {userIDStr:steam.friendsList})
-        
-        # update queue
-        for _ in steam.friendsList:
-            key = _.strip('"')
-            if key not in idDict:
-                idList.append(key)
-                idDict[key] = 1
-        counter += 1
+        try: #skip the entry if fails (usually caused by non-UNICODE information)
+            # loop through users
+            userID = idList.pop()
+            steam = SteamUserInfoCrawler(userID)
+            
+            # update information of each user
+            userIDStr = '"' + str(userID) + '"'
+            steam.saveToJson(userDetail, steam.userProfile)
+            steam.saveToJson(ratingDetail, {userIDStr:steam.ratingList})
+            steam.saveToJson(friendsDetail, {userIDStr:steam.friendsList})
+            
+            # update queue
+            for _ in steam.friendsList:
+                key = _.strip('"')
+                if key not in idDict:
+                    idList.append(key)
+                    idDict[key] = 1
+            counter += 1
+        except:
+            continue
 
 
 
