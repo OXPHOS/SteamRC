@@ -1,12 +1,14 @@
 # Extract and process user profile from steam
 # V1.0 generate user list from seed user and his/her friends list
 # V1.1 crawl with proxy (to do)
-# V1.2  add logger and exception (to do)
+# V1.2 add logger and exception (to do)
+# V1.3 singleton (to do)
 
 import os, sys
 import json
 import re
 import requests
+from proxy_crawler import Downloader
 
 HEADER = {
     'user-agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.361',
@@ -140,7 +142,7 @@ class steamUserInfo():
                 
     def _write_to_file(self, file, content):
         with open(file, 'a+') as f:
-            f.write(content)
+            f.write(content+'\n')
             
 def remove_files(path):
     try:
@@ -151,7 +153,7 @@ def remove_files(path):
 if __name__ == '__main__':
     starter = 76561197960265738
     
-        # a user list to go through
+    # a user list to go through
     idList = [starter]
     idDict = {starter:1}
     counter = 0
@@ -164,6 +166,8 @@ if __name__ == '__main__':
     remove_files(userDetail)
     remove_files(ratingDetail)
     remove_files(friendsDetail)
+    
+    dr = Downloader()
 
     while counter < 10: #for test purpose
         try: #skip the entry if fails
@@ -171,8 +175,8 @@ if __name__ == '__main__':
             userID = idList.pop()
             
             steam = steamUserInfo(userID)
-            steam.retrieve_profile(False)
-            steam.retrieve_games(False)
+            steam.retrieve_profile(True)
+            steam.retrieve_games(True)
             
             # update queue
             #ctr = 0
@@ -183,8 +187,9 @@ if __name__ == '__main__':
                     idList.append(key)
                     idDict[key] = 1
             #print ctr
-            print counter
+            #print counter
             counter += 1
+            time.sleep(random.randint(0, 60))
         except:
             continue
         

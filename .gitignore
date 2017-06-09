@@ -1,2 +1,5 @@
 /rawdata/*.*
 /example/*.*
+*.pyc
+*.pyo
+*.txt
