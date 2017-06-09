@@ -4,19 +4,15 @@
 # V1.2 add logger and exception (to do)
 # V1.3 singleton (to do)
 
-import os, sys
+import os
 import json
 import re
-import requests
+import time
+import random
 from proxy_crawler import Downloader
 
-HEADER = {
-    'user-agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.361',
-    'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Encoding':'gzip, deflate, sdch, br',
-    'Accept-Language':'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4'
-}
-
+PATIENCE = 10
+PROXY = False
 
 PATTERNS = {
     'profile': {
@@ -51,7 +47,7 @@ class steamUserInfo():
     def __init__(self, userID):
         self.userID = userID
         self.profileURL = "http://steamcommunity.com/profiles/%s"%self.userID
-        self.profileContent = requests.get(self.profileURL, HEADER).text
+        self.profileContent = dr.get(self.profileURL, PROXY)
         self.level = self.check_level()
         self.gamesURL = ''
         self.friendsURL = ''
@@ -77,9 +73,10 @@ class steamUserInfo():
             profile = {}
             for key, val in PATTERNS['profile'].items():
                 profile[key] = self.info_extractor(val, self.profileContent)
+            
                 
-            self.gamesURL = profile['gamesURL']
-            self.friendsURL = profile['friendsURL']
+            self.gamesURL = profile.get('gamesURL')
+            self.friendsURL = profile.get('friendsURL')
             
             if write_to_file:
                 self._write_to_file(userDetail, json.dumps({self.userID:profile}))
@@ -94,27 +91,31 @@ class steamUserInfo():
     def retrieve_games(self, write_to_file=False):
         if self.level == 'AVAILABLE':
             if self.gamesURL == '':
-                self.gamesURL = self.info_extractor(PATTERNS['profile']['gameURL'])
-   
-            gamesContent = requests.get(self.gamesURL, HEADER).text
-            gamesList = self.info_extractor(PATTERNS['gamesList'], gamesContent)[1:-1]
-            games = []
+                self.gamesURL = self.info_extractor(PATTERNS['profile']['gamesURL'],
+                                                    self.profileContent)
             
-            for gameInfo in gamesList.split('},{'):
-                gamesTmp = {}             
-                for key, val in PATTERNS['games'].items():
-                    gamesTmp[key] = self.info_extractor(val, gameInfo)
-                    
-                if gamesTmp['lastPlayed'] != '':
-                    games.append({gamesTmp['appID']:gamesTmp})
+            if self.gamesURL != '':
+                gamesContent = dr.get(self.gamesURL, PROXY)
+                gamesList = self.info_extractor(PATTERNS['gamesList'], gamesContent)[1:-1]
+                games = []
                 
-            if write_to_file:
-                self._write_to_file(ratingDetail, json.dumps({self.userID:games}))
+                for gameInfo in gamesList.split('},{'):
+                    gamesTmp = {}             
+                    for key, val in PATTERNS['games'].items():
+                        gamesTmp[key] = self.info_extractor(val, gameInfo)
+                        
+                    if gamesTmp['lastPlayed'] != '':
+                        games.append({gamesTmp['appID']:gamesTmp})
+                    
+                if write_to_file:
+                    self._write_to_file(ratingDetail, json.dumps({self.userID:games}))
+                else:
+                    pass
+                    # print games[0:3]
+                return True
+            
             else:
-                pass
-                # print games[0:3]
-                       
-            return True
+                return False
         else:
             return False
         
@@ -123,22 +124,25 @@ class steamUserInfo():
             if self.friendsURL == '':
                 self.friendsURL = self.info_extractor(PATTERNS['profile']['friendsURL'])
 
-            friendsContent = requests.get(self.friendsURL, HEADER).text
-            regxObj = re.compile(PATTERNS['friends'])
-            friendsIter = re.finditer(regxObj, friendsContent)
-    
-            for it in friendsIter:
-                addr = str(it.group(1))
-                
-                if addr.startswith('http://steamcommunity.com/id'):
-                    friendsID = self.info_extractor(
-                                PATTERNS['profile']['steamID'],
-                                requests.get(addr, HEADER).text)
-                    yield friendsID
+            if self.gamesURL != '':
+                friendsContent = dr.get(self.friendsURL, PROXY)
+                regxObj = re.compile(PATTERNS['friends'])
+                friendsIter = re.finditer(regxObj, friendsContent)
+        
+                for it in friendsIter:
+                    addr = str(it.group(1))
                     
-                else:
-                    friendsID = re.search('.+?profiles/(\d*)', addr).group(1)
-                    yield friendsID
+                    if addr.startswith('http://steamcommunity.com/id'):
+                        friendsID = self.info_extractor(
+                                    PATTERNS['profile']['steamID'],
+                                    dr.get(addr, PROXY))
+                        yield friendsID
+                        
+                    else:
+                        friendsID = re.search('.+?profiles/(\d*)', addr).group(1)
+                        yield friendsID
+            else:
+                return
                 
     def _write_to_file(self, file, content):
         with open(file, 'a+') as f:
@@ -151,12 +155,13 @@ def remove_files(path):
         pass
     
 if __name__ == '__main__':
-    starter = 76561197960265738
+    starter = 76561198012472268 #76561197960265738
     
     # a user list to go through
     idList = [starter]
     idDict = {starter:1}
     counter = 0
+    trials = PATIENCE
  
     # data file path
     userDetail = './rawdata/users_detail.json'
@@ -170,28 +175,52 @@ if __name__ == '__main__':
     dr = Downloader()
 
     while counter < 10: #for test purpose
-        try: #skip the entry if fails
-             #loop through users
-            userID = idList.pop()
+    
+        userID = idList.pop()
+        print userID
+        steam = steamUserInfo(userID)
+        steam.retrieve_profile(True)
+        steam.retrieve_games(True)
+        
+        # update queue
+        #ctr = 0
+        for key in steam.retrieve_friends():
+            # ctr += 1
+            key = int(key)
+            if key not in idDict:
+                idList.append(key)
+                idDict[key] = 1
+        #print ctr
+        print counter
+        counter += 1
+        time.sleep(random.randint(0, 60))
+#        try: #skip the entry if fails
+#             #loop through users
+#            userID = idList.pop()
+#            print userID
+#            steam = steamUserInfo(userID)
+#            steam.retrieve_profile(True)
+#            steam.retrieve_games(True)
             
-            steam = steamUserInfo(userID)
-            steam.retrieve_profile(True)
-            steam.retrieve_games(True)
-            
-            # update queue
-            #ctr = 0
-            for key in steam.retrieve_friends():
-                # ctr += 1
-                key = int(key)
-                if key not in idDict:
-                    idList.append(key)
-                    idDict[key] = 1
-            #print ctr
-            #print counter
-            counter += 1
-            time.sleep(random.randint(0, 60))
-        except:
-            continue
+#            # update queue
+#            #ctr = 0
+#            for key in steam.retrieve_friends():
+#                # ctr += 1
+#                key = int(key)
+#                if key not in idDict:
+#                    idList.append(key)
+#                    idDict[key] = 1
+#            #print ctr
+#            print counter
+#            counter += 1
+#            time.sleep(random.randint(0, 60))
+#        except:
+#            trials -= 1
+#            if trials == 0:
+#                print "Failed after %i tries"%PATIENCE
+#                break
+#            else:
+#                continue
         
     
     

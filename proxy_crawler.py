@@ -105,7 +105,7 @@ class Downloader(object):
                         v_url.append(url)
 
         # returns a list of url strings without '\n'
-        print v_url
+        #print v_url
         return v_url
 
     def getProxyListFromFile(self):
@@ -114,43 +114,44 @@ class Downloader(object):
     def updateProxyFile(self, proxylist):
         open(self.proxyfile, 'w').write('\n'.join(proxylist))
 
-    def get(self, url):
-        """
-        Simply wrap requests to get the html by url
-        """
-        patient = 10
-        step = 0
-        #debug
-        #d100 = 0
-        while patient:
-            patient -= 1
-            try:
-                
-                proxy = random.choice(self._v_proxies)
+    def get(self, url, use_proxies=False):
+            """
+            Simply wrap requests to get the html by url if use_proxies=True
+            """
+            patient = 10
+            step = 0
+            #debug
+            #d100 = 0
+            while patient:
+                patient -= 1
+                try:
+                    if use_proxies:
+                        proxy = random.choice(self._v_proxies)
+                        r = requests.get(url, headers=self.header, timeout=10, 
+                                         proxies={proxy.split(':')[0]:proxy})
+                    else:
+                        r = requests.get(url, headers=self.header, timeout=10)
 
-                r = requests.get(url, headers=self.header, timeout=10, 
-                                 proxies={proxy.split(':')[0]:proxy})
+                    if r.text == '':
+                        raise requests.exceptions.HTTPError("No HTTP body returned")
 
-                if r.text == '':
-                    raise requests.exceptions.HTTPError("No HTTP body returned")
+                    if r.text.find("too many requests") != -1:
+                        raise requests.exceptions.HTTPError("Too many requests")
+                    #print "SUCCESS!"
+                    return r.text
 
-                if r.text.find("too many requests") != -1:
-                    raise requests.exceptions.HTTPError("Too many requests")
-                print "SUCCESS!"
-                return r.text
+                # ProxyError is a derived class of ConnectionError
+                except (requests.exceptions.ConnectionError, requests.exceptions.HTTPError, requests.exceptions.Timeout) as e:
+                    logging.error("Proxy exception: %s", e.message)
+                    continue
 
-            # ProxyError is a derived class of ConnectionError
-            except (requests.exceptions.ConnectionError, requests.exceptions.HTTPError, requests.exceptions.Timeout) as e:
-                logging.error("Proxy exception: %s", e.message)
-                continue
+                except requests.exceptions.RequestException as e:
+                    logging.error("Request exception (get url): %s", e.message)
 
-            except requests.exceptions.RequestException as e:
-                logging.error("Request exception (get url): %s", e.message)
-
-        # TODO
-        # do more work for all failed case later
-        logging.critical("Get Response failed from url %s after 10 tries" % url)
-        raise Exception('Downloader exception, failed too many times')
+            # TODO
+            # do more work for all failed case later
+            logging.critical("Get Response failed from url %s after 10 tries" % url)
+            raise Exception('Downloader exception, failed too many times')
         
 if __name__ == '__main__':
     dr = Downloader()
