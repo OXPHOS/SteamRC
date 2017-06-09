@@ -127,10 +127,10 @@ class Downloader(object):
                 try:
                     if use_proxies:
                         proxy = random.choice(self._v_proxies)
-                        r = requests.get(url, headers=self.header, timeout=10, 
+                        r = requests.get(url, headers=self.header, timeout=30, 
                                          proxies={proxy.split(':')[0]:proxy})
                     else:
-                        r = requests.get(url, headers=self.header, timeout=10)
+                        r = requests.get(url, headers=self.header, timeout=30)
 
                     if r.text == '':
                         raise requests.exceptions.HTTPError("No HTTP body returned")

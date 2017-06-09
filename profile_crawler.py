@@ -122,9 +122,10 @@ class steamUserInfo():
     def retrieve_friends(self):
         if self.level == 'AVAILABLE':
             if self.friendsURL == '':
-                self.friendsURL = self.info_extractor(PATTERNS['profile']['friendsURL'])
+                self.friendsURL = self.info_extractor(PATTERNS['profile']['friendsURL'],
+                                                      self.profileContent)
 
-            if self.gamesURL != '':
+            if self.friendsURL != '':
                 friendsContent = dr.get(self.friendsURL, PROXY)
                 regxObj = re.compile(PATTERNS['friends'])
                 friendsIter = re.finditer(regxObj, friendsContent)
@@ -155,7 +156,7 @@ def remove_files(path):
         pass
     
 if __name__ == '__main__':
-    starter = 76561198012472268 #76561197960265738
+    starter = 76561198116513892 #76561197960265738
     
     # a user list to go through
     idList = [starter]
@@ -168,13 +169,13 @@ if __name__ == '__main__':
     ratingDetail = './rawdata/ratings_detail.json'
     friendsDetail = './rawdata/friends_detail.json'
 
-    remove_files(userDetail)
-    remove_files(ratingDetail)
-    remove_files(friendsDetail)
+#    remove_files(userDetail)
+#    remove_files(ratingDetail)
+#    remove_files(friendsDetail)
     
     dr = Downloader()
-
-    while counter < 10: #for test purpose
+    
+    while ((counter < 1000) & (len(idList) > 0)): # Use 10 for test purpose
     
         userID = idList.pop()
         print userID
@@ -186,12 +187,17 @@ if __name__ == '__main__':
         #ctr = 0
         for key in steam.retrieve_friends():
             # ctr += 1
-            key = int(key)
-            if key not in idDict:
-                idList.append(key)
-                idDict[key] = 1
+            try:
+                key = int(key)  # Found one case that the user showed no steam id #http://steamcommunity.com/id/sugegame
+                if key not in idDict:
+                    idList.append(key)
+                    idDict[key] = 1
+            except ValueError:
+                continue
+                
+
         #print ctr
-        print counter
+        print counter, len(idList)
         counter += 1
         time.sleep(random.randint(0, 60))
 #        try: #skip the entry if fails
