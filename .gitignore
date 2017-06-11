@@ -1,5 +1,7 @@
 /rawdata/*.*
 /example/*.*
+/steamData/*.*
 *.pyc
 *.pyo
 *.txt
+.*
