@@ -1,8 +1,12 @@
 # Extract and process user profile from steam
 # V1.0 generate user list from seed user and his/her friends list
-# V1.1 crawl with proxy (to do)
+# V1.1 crawl with proxy
+# V1.2 serialization: dump current id list to csv file when exception occurs,
+#      so one can restart from the same id list after debugging.
+#      Required exceptions (in Downloader) to be handled properly (to do)
 # V1.2 add logger and exception (to do)
 # V1.3 singleton (to do)
+
 
 import os
 import json
@@ -165,9 +169,9 @@ if __name__ == '__main__':
     trials = PATIENCE
  
     # data file path
-    userDetail = './rawdata/users_detail.json'
-    ratingDetail = './rawdata/ratings_detail.json'
-    friendsDetail = './rawdata/friends_detail.json'
+    userDetail = './rawdata/users_detail_samples.json'
+    ratingDetail = './rawdata/ratings_detail_samples.json'
+    friendsDetail = './rawdata/friends_detail_samples.json'
 
     remove_files(userDetail)
     remove_files(ratingDetail)
@@ -175,7 +179,7 @@ if __name__ == '__main__':
     
     dr = Downloader()
     
-    while ((counter < 5000) & (len(idList) > 0)): # Use 10 for test purpose
+    while ((counter < 10) & (len(idList) > 0)): # Use 10 for test purpose
     
         userID = idList.pop()
         print userID
@@ -200,34 +204,3 @@ if __name__ == '__main__':
         print counter, len(idList)
         counter += 1
         time.sleep(random.randint(0, 60))
-#        try: #skip the entry if fails
-#             #loop through users
-#            userID = idList.pop()
-#            print userID
-#            steam = steamUserInfo(userID)
-#            steam.retrieve_profile(True)
-#            steam.retrieve_games(True)
-            
-#            # update queue
-#            #ctr = 0
-#            for key in steam.retrieve_friends():
-#                # ctr += 1
-#                key = int(key)
-#                if key not in idDict:
-#                    idList.append(key)
-#                    idDict[key] = 1
-#            #print ctr
-#            print counter
-#            counter += 1
-#            time.sleep(random.randint(0, 60))
-#        except:
-#            trials -= 1
-#            if trials == 0:
-#                print "Failed after %i tries"%PATIENCE
-#                break
-#            else:
-#                continue
-        
-    
-    
-    
