@@ -105,10 +105,10 @@ class steamUserInfo():
                         gamesTmp[key] = self.info_extractor(val, gameInfo)
                         
                     if gamesTmp['lastPlayed'] != '':
-                        games.append({gamesTmp['appID']:gamesTmp})
+                        games.append(gamesTmp)
                     
                 if write_to_file:
-                    self._write_to_file(ratingDetail, json.dumps({self.userID:games}))
+                    self._write_to_file(ratingDetail, json.dumps({"steamID":self.userID, "apps":games}))
                 else:
                     pass
                     # print games[0:3]
@@ -156,7 +156,7 @@ def remove_files(path):
         pass
     
 if __name__ == '__main__':
-    starter = 76561198116513892 #76561197960265738
+    starter = 76561197960265738
     
     # a user list to go through
     idList = [starter]
@@ -169,13 +169,13 @@ if __name__ == '__main__':
     ratingDetail = './rawdata/ratings_detail.json'
     friendsDetail = './rawdata/friends_detail.json'
 
-#    remove_files(userDetail)
-#    remove_files(ratingDetail)
-#    remove_files(friendsDetail)
+    remove_files(userDetail)
+    remove_files(ratingDetail)
+    remove_files(friendsDetail)
     
     dr = Downloader()
     
-    while ((counter < 1000) & (len(idList) > 0)): # Use 10 for test purpose
+    while ((counter < 5000) & (len(idList) > 0)): # Use 10 for test purpose
     
         userID = idList.pop()
         print userID
