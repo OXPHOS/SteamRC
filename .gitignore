@@ -1,3 +1,4 @@
+/tests/*.*
 /rawdata/*.*
 /example/*.*
 /steamData/*.*
@@ -5,3 +6,4 @@
 *.pyo
 *.txt
 .*
+*.sqlite3
